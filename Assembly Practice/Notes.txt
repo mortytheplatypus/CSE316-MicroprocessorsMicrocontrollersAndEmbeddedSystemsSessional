@@ -1,0 +1,193 @@
+.MODEL SMALL    ; directive for size of code & data
+.STACK 100H     ; stack size 512 Bytes
+
+.DATA           ; data segment
+
+	; NAME DB(1)|DW(2)|DD(4)|FW(6)|DQ(8)|DT(10) ?|09H|,,,|'...$'
+	; NAME EQU CONSTANT
+	; DUP Operator for array init: <size> DUP (<value>)
+	; Case-Insensitive, Allowed Special Character : ?_$.
+
+
+	CR EQU 0DH
+	LF EQU 0AH
+	ENDL DB 0DH, 0AH, '$'
+
+	STRING_VARIABLE_NAME DB 'This is a random string! $'
+	VARIABLE_NAME DB ?
+
+
+.CODE          ; code segment
+
+MAIN PROC
+    ; Data Segment Initialization
+    MOV AX, @data
+    MOV	DS, AX 
+	
+	; DOS SERVICES (Invoked by INT 21H)
+    ;              (Endpoint vector AH)
+    ; ===============================================================
+    ; 4CH : EXIT with <AL> return value
+    ; 1 : Single key input to <AL>
+    ; 2 : Single char output from <DL> to <AL>
+    ; 9 : String output with $ end from <DX> (location: using LEA)
+	
+    
+    ; INSTRUCTIONS                           
+    ; ===============================================================
+    ; BASIC - 
+    ; 1. No MEM-MEM Operation (Use AX/AL temporary)
+    ; 2. Access Memory (DS) - offset __ | [__]
+    ; 3. Binary-Operation with same type (Word/Byte)
+    ; 4. Avoid MUL/DIV IF possible ( + - << >> )
+    ; Seg: |Code CS(IP) | Data DS[SI]ES[DI](BP) | Stack SS(SP)(BP)|
+    ; Registers: AX ... DX | AH-AL ... DH-DL
+    ; ---------------------------------------------------------------
+    ; 
+	
+	; ---------------------------------------------------------------
+    ; MOV DESTINATION, SOURCE
+    ; ASSIGNMENT / COPY from SOURCE to DESTINATION
+    ; Register / Memory / Intermediate
+    ; Memory, Memory Not Allowed, i.e.,  MOV Memory, Memory is not permitted
+    ; SOURCE & DESTINATION size must be equal
+	
+    ; ---------------------------------------------------------------
+    ; >> ADD|SUB, DESTINATION,	AMOUNT
+    ; DESTINATION +=|-= AMOUNT
+	
+    ; ---------------------------------------------------------------
+    ; >> NEG DESTINATION (2's compliment) 
+	; A = -A
+	
+    ; ---------------------------------------------------------------
+    ; >> INC|DEC VARIABLE_NAME
+    ; VARIABLE_NAME++ | VARIABLE_NAME--
+	
+	; ---------------------------------------------------------------
+	; MULTIPLICATION
+	MOV AX, VALUE1
+	MUL VALUE2
+	; now the product is stored in AX, i.e., AX = VALUE1*VALUE2
+	
+	; ---------------------------------------------------------------
+	; DIVISION
+	MOV DX, 0
+	MOV AX, DIVIDENT
+	MOV CX, DIVISOR
+	DIV CX
+	; now the quotient is stored in AX, and remainder in DX 
+	
+	
+    ; =====================================================================
+	; =====================================================================
+    
+    ; NEW LINE
+    LEA DX, endl
+    MOV AH, 9
+    INT 21H
+	
+	; STRING OUTPUT := the value of STRING_VARIABLE_NAME gets copied into DX
+    LEA DX, STRING_VARIABLE_NAME
+    MOV AH, 9
+    INT 21H
+           
+    ; CHARACTER INPUT := the input gets copied into VARIABLE_NAME from AL
+    MOV AH, 1
+    INT 21H
+    MOV VARIABLE_NAME, AL
+    
+    ; CHARACTER OUTPUT := the value of VARIABLE_NAME gets copied into DX
+    MOV DL, VARIABLE_NAME
+    MOV AH, 2
+    INT 21h
+    
+    ; DIGIT NUM INPUT 
+    MOV AH, 1
+    INT 21H
+    SUB AL, '0'
+    MOV VARIABLE_NAME, AL
+    
+    ; DIGIT NUM OUTPUT
+    MOV DL, '0'
+    ADD DL, VARIABLE_NAME
+    MOV AH, 2
+    INT 21H
+	
+	; =====================================================================
+    ; ============================= BRANCHING =============================
+	CMP AX, BX
+	JUMP_CODE JUMP_SCOPE
+	
+	JUMP_SCOPE:
+		;code segment here
+	
+		;JUMP_CODES	
+			================= Signed Conditional Jumps =================
+			;JG/JNLE := greater/not less or equal   |   ZF=0 and SF=OF
+			;JGE/JNL := greater or equal/not less   |   SF=OF
+			;JL/JNGE := less/not greater or equal   |   SF<>OF
+			;JLE/JNG := less or equal/not greater   |   ZF=1 and SF<>OF
+			
+			================ Unsigned Conditional Jumps ================
+			;JA/JNBE := above/not below or equal    |   CF=0 and ZF=0
+			;JAE/JNB := above or equal/not below    |   CF=0
+			;JB/JNAE := below/not above or equal    |   CF=1
+			;JBE/JNA := below or equal/not above    |   CF=1 and ZF=1
+			
+			================ Single-flag Jumps ================
+			;JE/JZ := equal/zero                    |   ZF=1
+			;JNE/JNZ := not equal not /zero         |   ZF=0
+			;JC := carry                            |   CF=1
+			;JNC := not carry                       |   CF=0
+			;JO := overflow                         |   OF=1
+			;JNO := not overflow                    |   OF=0
+			;JS := sign negative                    |   SF=1
+			;JNS := sign nonnegative                |   SF=0
+			;JP/JPE := parity even                  |   PF=1
+			;JNP/JPO := parity odd                  |   PF=0
+    
+	
+	; =====================================================================
+    ; =============================== LOOPS ===============================
+	
+		1. Method 1:	
+			MOV CX, NO_OF_ITERATIONS
+			
+			LOOP_SCOPE: 
+				;do something
+				DEC CX
+				JNZ LOOP_SCOPE
+				
+		2. Method 2:
+			MOV I, 1
+			LOOP_SCOPE:
+				MOV DX, NO_OF_ITERATIONS
+				CMP I, DX
+				JG END_OF_LOOP
+				
+				INC I
+				JMP LOOP_SCOPE
+			END_OF_LOOP:
+    
+	; =====================================================================
+	; =====================================================================
+	
+	; =====================================================================
+    ; ============================= FUNCTIONS =============================
+	
+		FUNCTION_NAME PROC
+			; do something 
+			RET
+		FUNCTION_NAME ENDP
+	
+	; =====================================================================
+	; =====================================================================
+	
+    ; DOS EXIT
+    MOV AH, 4CH     ; terminate process
+    MOV AL, 0       ; return code
+    INT 21H         ; DOS Service Invoke
+    
+MAIN ENDP
+END MAIN
